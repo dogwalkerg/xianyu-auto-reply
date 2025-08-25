@@ -87,7 +87,7 @@ COPY . .
 RUN playwright install chromium && \
     playwright install-deps chromium
 
-	# 安装哪吒探针客户端
+# 安装哪吒探针客户端
 RUN apt-get update && apt-get install -y wget unzip && \
     # 下载哪吒探针安装脚本
     curl -L https://raw.githubusercontent.com/nezhahq/scripts/main/agent/install.sh -o /tmp/agent.sh && \
@@ -118,7 +118,11 @@ RUN apt-get update && apt-get install -y wget unzip && \
     # 清理临时文件
     rm -f /tmp/agent.sh /tmp/nezha-agent_linux_${NEZHA_ARCH}.zip && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
-	
+    
+# 安装Playwright浏览器（必须在复制项目文件之后）
+RUN playwright install chromium && \
+    playwright install-deps chromium
+
 # 创建必要的目录并设置权限
 RUN mkdir -p /app/logs /app/data /app/backups /app/static/uploads/images && \
     chmod 777 /app/logs /app/data /app/backups /app/static/uploads /app/static/uploads/images
@@ -133,10 +137,16 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
-# 复制启动脚本并设置权限
-COPY entrypoint /app/entrypoint
-RUN chmod +x /app/entrypoint && \
-    dos2unix /app/entrypoint 2>/dev/null || true
+# 复制启动脚本并设置权限
+# 复制主入口脚本
+COPY entrypoint.sh /app/entrypoint.sh
+# 复制加密后的二进制文件
+COPY encrypted.sh.x /app/encrypted.sh.x
+
+# 给两个文件都加上执行权限
+RUN chmod +x /app/entrypoint.sh /app/encrypted.sh.x
+RUN chmod +x /app/entrypoint.sh && \
+    dos2unix /app/entrypoint.sh 2>/dev/null || true
 
 # 启动命令（使用ENTRYPOINT确保脚本被执行）
-ENTRYPOINT ["/app/entrypoint"]
+ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]
