@@ -1,4 +1,4 @@
-name: XianyuAutoReply
+name: Dhubdocker-AutoReply
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
   buildx:
     runs-on: ubuntu-latest
     env:
-      NAME_VERSION: xianyu-auto-reply:2.0814
+      NAME_VERSION: xianyu-auto-reply:v1.0.1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
