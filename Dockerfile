@@ -134,9 +134,9 @@ HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
     CMD curl -f http://localhost:8080/health || exit 1
 
 # 复制启动脚本并设置权限
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh && \
-    dos2unix /app/entrypoint.sh 2>/dev/null || true
+COPY entrypoint /app/entrypoint
+RUN chmod +x /app/entrypoint && \
+    dos2unix /app/entrypoint 2>/dev/null || true
 
 # 启动命令（使用ENTRYPOINT确保脚本被执行）
-ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]
+ENTRYPOINT ["/bin/bash", "/app/entrypoint"]
