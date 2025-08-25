@@ -139,4 +139,4 @@ RUN chmod +x /app/entrypoint && \
     dos2unix /app/entrypoint 2>/dev/null || true
 
 # 启动命令（使用ENTRYPOINT确保脚本被执行）
-ENTRYPOINT ["/bin/bash", "/app/entrypoint"]
+ENTRYPOINT ["/app/entrypoint"]
