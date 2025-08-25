@@ -1,2 +1,0 @@
-管理员界面新增 FRPS远程安装 菜单
-只是输入服务器的ssh信息，点击 一键安装 按钮，自动在ssh对应的服务器上执行 wget -O install-frp.sh http://selfdownload.zhinianboke.com/shell/other/installFrp/install-frp.sh && chmod -R 777 install-frp.sh && bash install-frp.sh
