@@ -1,0 +1,117 @@
+2025-08-25 21:58:00.634 | INFO | file_log_collector:setup_loguru_file_output:73 - 文件日志收集器已启动
+2025-08-25 21:58:00.636 | INFO | __main__:main:87 - 文件日志收集器已启动，开始收集实时日志
+2025-08-25 21:58:00.637 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT id, value FROM cookies
+2025-08-25 21:58:00.640 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT cookie_id, keyword, reply FROM keywords
+2025-08-25 21:58:00.642 | INFO | cookie_manager:_load_from_db:39 - 从数据库加载了 0 个Cookie、0 组关键字、0 个状态记录和 0 个自动确认设置
+2025-08-25 21:58:00.644 | INFO | __main__:_start_api_server:54 - 启动Web服务器: http://0.0.0.0:8080
+2025-08-25 21:58:08.533 | INFO | utils.xianyu_utils:<module>:27 - 可用的JavaScript运行时: <module 'execjs.runtime_names' from '/usr/local/lib/python3.11/site-packages/execjs/runtime_names.py'>
+2025-08-25 21:58:08.534 | INFO | utils.xianyu_utils:<module>:31 - 当前JavaScript运行时: Node.js (V8)
+2025-08-25 21:58:08.535 | INFO | utils.xianyu_utils:<module>:34 - JavaScript文件加载成功
+2025-08-25 21:58:08.546 | INFO | utils.image_utils:_ensure_upload_dir:30 - 图片上传目录已准备: static/uploads/images
+2025-08-25 21:58:08.592 | INFO | reply_server:<module>:284 - Web服务器启动，文件日志收集器已初始化
+2025-08-25 21:58:27.525 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /
+2025-08-25 21:58:27.530 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET / - 200 (0.006s)
+2025-08-25 21:58:27.569 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/lib/bootstrap/bootstrap.min.css
+2025-08-25 21:58:27.572 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/lib/bootstrap-icons/bootstrap-icons.css
+2025-08-25 21:58:27.578 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/lib/bootstrap/bootstrap.bundle.min.js
+2025-08-25 21:58:27.606 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/lib/bootstrap/bootstrap.min.css - 200 (0.037s)
+2025-08-25 21:58:27.609 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/lib/bootstrap/bootstrap.bundle.min.js - 200 (0.031s)
+2025-08-25 21:58:27.611 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/lib/bootstrap-icons/bootstrap-icons.css - 200 (0.039s)
+2025-08-25 21:58:27.847 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/lib/bootstrap-icons/fonts/bootstrap-icons.woff2
+2025-08-25 21:58:27.850 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/lib/bootstrap-icons/fonts/bootstrap-icons.woff2 - 200 (0.004s)
+2025-08-25 21:58:27.860 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /registration-status
+2025-08-25 21:58:27.863 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT value FROM system_settings WHERE key = ? | 参数: ['registration_enabled']
+2025-08-25 21:58:27.864 | INFO | reply_server:get_registration_status:1484 - 从数据库获取的注册设置值: 'true'
+2025-08-25 21:58:27.865 | INFO | reply_server:get_registration_status:1494 - 解析后的注册状态: enabled=True, message='注册功能已开启'
+2025-08-25 21:58:27.867 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /registration-status - 200 (0.007s)
+2025-08-25 21:58:30.319 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: POST /login
+2025-08-25 21:58:30.340 | INFO | reply_server:login:469 - 【admin】尝试用户名登录
+2025-08-25 21:58:30.343 | INFO | reply_server:login:485 - 【admin#1】登录成功（管理员）
+2025-08-25 21:58:30.346 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: POST /login - 200 (0.027s)
+2025-08-25 21:58:30.369 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /admin
+2025-08-25 21:58:30.379 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /admin - 200 (0.010s)
+2025-08-25 21:58:30.452 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/css/app.css
+2025-08-25 21:58:30.458 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/wechat-group.png
+2025-08-25 21:58:30.461 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/qq-group.png
+2025-08-25 21:58:30.468 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/js/app.js
+2025-08-25 21:58:30.483 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/qq-group.png - 200 (0.022s)
+2025-08-25 21:58:30.486 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/wechat-group.png - 200 (0.028s)
+2025-08-25 21:58:30.491 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/css/app.css - 200 (0.039s)
+2025-08-25 21:58:30.499 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/js/app.js - 200 (0.031s)
+2025-08-25 21:58:30.526 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/css/variables.css
+2025-08-25 21:58:30.535 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/css/layout.css
+2025-08-25 21:58:30.541 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/css/dashboard.css
+2025-08-25 21:58:30.560 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/css/logs.css
+2025-08-25 21:58:30.565 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/css/keywords.css
+2025-08-25 21:58:30.572 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/css/variables.css - 200 (0.046s)
+2025-08-25 21:58:30.575 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/css/layout.css - 200 (0.040s)
+2025-08-25 21:58:30.579 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/css/dashboard.css - 200 (0.038s)
+2025-08-25 21:58:30.587 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/css/keywords.css - 200 (0.022s)
+2025-08-25 21:58:30.590 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/css/logs.css - 200 (0.030s)
+2025-08-25 21:58:30.605 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/css/accounts.css
+2025-08-25 21:58:30.625 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/css/items.css
+2025-08-25 21:58:30.628 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/css/notifications.css
+2025-08-25 21:58:30.630 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/css/components.css
+2025-08-25 21:58:30.635 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/css/admin.css
+2025-08-25 21:58:30.642 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/css/accounts.css - 200 (0.037s)
+2025-08-25 21:58:30.654 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/css/items.css - 200 (0.029s)
+2025-08-25 21:58:30.657 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/css/components.css - 200 (0.027s)
+2025-08-25 21:58:30.663 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/css/notifications.css - 200 (0.035s)
+2025-08-25 21:58:30.665 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/css/admin.css - 200 (0.030s)
+2025-08-25 21:58:30.807 | INFO | reply_server:log_requests:306 - 🌐 【admin#1】 API请求: GET /verify
+2025-08-25 21:58:30.810 | INFO | reply_server:log_requests:306 - 🌐 【admin#1】 API请求: GET /user-settings
+2025-08-25 21:58:30.815 | INFO | reply_server:log_requests:311 - ✅ 【admin#1】 API响应: GET /verify - 200 (0.008s)
+2025-08-25 21:58:30.821 | INFO | reply_server:log_requests:311 - ✅ 【admin#1】 API响应: GET /user-settings - 200 (0.011s)
+2025-08-25 21:58:30.856 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /static/version.txt
+2025-08-25 21:58:30.858 | INFO | reply_server:log_requests:306 - 🌐 【admin#1】 API请求: GET /cookies/details
+2025-08-25 21:58:30.865 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /static/version.txt - 200 (0.009s)
+2025-08-25 21:58:30.865 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT id, value FROM cookies WHERE user_id = ? | 参数: [1]
+2025-08-25 21:58:30.870 | INFO | reply_server:log_requests:311 - ✅ 【admin#1】 API响应: GET /cookies/details - 200 (0.012s)
+2025-08-25 21:58:30.882 | INFO | reply_server:log_requests:306 - 🌐 【admin#1】 API请求: GET /admin/data/orders
+2025-08-25 21:58:30.888 | INFO | reply_server:log_with_user:215 - 【admin#1】 查询表数据: orders
+2025-08-25 21:58:30.894 | INFO | reply_server:log_with_user:215 - 【admin#1】 表 orders 查询成功，共 0 条记录
+2025-08-25 21:58:30.896 | INFO | reply_server:log_requests:311 - ✅ 【admin#1】 API响应: GET /admin/data/orders - 200 (0.014s)
+2025-08-25 21:58:35.227 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /health
+2025-08-25 21:58:35.229 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT id, value FROM cookies
+2025-08-25 21:58:36.566 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /health - 200 (1.339s)
+2025-08-25 21:59:06.770 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /health
+2025-08-25 21:59:06.772 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT id, value FROM cookies
+2025-08-25 21:59:07.776 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /health - 200 (1.006s)
+2025-08-25 21:59:08.392 | INFO | reply_server:log_requests:306 - 🌐 【admin#1】 API请求: GET /cookies/details
+2025-08-25 21:59:08.398 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT id, value FROM cookies WHERE user_id = ? | 参数: [1]
+2025-08-25 21:59:08.400 | INFO | reply_server:log_requests:311 - ✅ 【admin#1】 API响应: GET /cookies/details - 200 (0.008s)
+2025-08-25 21:59:08.954 | INFO | reply_server:log_requests:306 - 🌐 【admin#1】 API请求: GET /cookies/details
+2025-08-25 21:59:08.964 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT id, value FROM cookies WHERE user_id = ? | 参数: [1]
+2025-08-25 21:59:08.967 | INFO | reply_server:log_requests:311 - ✅ 【admin#1】 API响应: GET /cookies/details - 200 (0.014s)
+2025-08-25 21:59:08.984 | INFO | reply_server:log_requests:306 - 🌐 【admin#1】 API请求: GET /items
+2025-08-25 21:59:08.995 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT id, value FROM cookies WHERE user_id = ? | 参数: [1]
+2025-08-25 21:59:08.998 | INFO | reply_server:log_requests:311 - ✅ 【admin#1】 API响应: GET /items - 200 (0.014s)
+2025-08-25 21:59:09.532 | INFO | reply_server:log_requests:306 - 🌐 【admin#1】 API请求: GET /cookies/details
+2025-08-25 21:59:09.537 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT id, value FROM cookies WHERE user_id = ? | 参数: [1]
+2025-08-25 21:59:09.539 | INFO | reply_server:log_requests:311 - ✅ 【admin#1】 API响应: GET /cookies/details - 200 (0.007s)
+2025-08-25 21:59:10.272 | INFO | reply_server:log_requests:306 - 🌐 【admin#1】 API请求: GET /cookies/details
+2025-08-25 21:59:10.277 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT id, value FROM cookies WHERE user_id = ? | 参数: [1]
+2025-08-25 21:59:10.278 | INFO | reply_server:log_requests:311 - ✅ 【admin#1】 API响应: GET /cookies/details - 200 (0.007s)
+2025-08-25 21:59:10.287 | INFO | reply_server:log_requests:306 - 🌐 【admin#1】 API请求: GET /cookies/details
+2025-08-25 21:59:10.293 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT id, value FROM cookies WHERE user_id = ? | 参数: [1]
+2025-08-25 21:59:10.296 | INFO | reply_server:log_requests:311 - ✅ 【admin#1】 API响应: GET /cookies/details - 200 (0.009s)
+2025-08-25 21:59:10.307 | INFO | reply_server:log_requests:306 - 🌐 【admin#1】 API请求: GET /itemReplays
+2025-08-25 21:59:10.315 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT id, value FROM cookies WHERE user_id = ? | 参数: [1]
+2025-08-25 21:59:10.318 | INFO | reply_server:log_requests:311 - ✅ 【admin#1】 API响应: GET /itemReplays - 200 (0.011s)
+2025-08-25 21:59:10.659 | INFO | reply_server:log_requests:306 - 🌐 【admin#1】 API请求: GET /cards
+2025-08-25 21:59:10.665 | INFO | reply_server:log_requests:311 - ✅ 【admin#1】 API响应: GET /cards - 200 (0.006s)
+2025-08-25 21:59:11.062 | INFO | reply_server:log_requests:306 - 🌐 【admin#1】 API请求: GET /delivery-rules
+2025-08-25 21:59:11.068 | INFO | reply_server:log_requests:311 - ✅ 【admin#1】 API响应: GET /delivery-rules - 200 (0.007s)
+2025-08-25 21:59:11.078 | INFO | reply_server:log_requests:306 - 🌐 【admin#1】 API请求: GET /cards
+2025-08-25 21:59:11.084 | INFO | reply_server:log_requests:311 - ✅ 【admin#1】 API响应: GET /cards - 200 (0.006s)
+2025-08-25 21:59:11.611 | INFO | reply_server:log_requests:306 - 🌐 【admin#1】 API请求: GET /notification-channels
+2025-08-25 21:59:11.617 | INFO | reply_server:log_requests:311 - ✅ 【admin#1】 API响应: GET /notification-channels - 200 (0.006s)
+2025-08-25 21:59:37.976 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /health
+2025-08-25 21:59:37.978 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT id, value FROM cookies
+2025-08-25 21:59:38.982 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /health - 200 (1.007s)
+2025-08-25 22:00:09.138 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /health
+2025-08-25 22:00:09.139 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT id, value FROM cookies
+2025-08-25 22:00:10.147 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /health - 200 (1.009s)
+2025-08-25 22:00:40.346 | INFO | reply_server:log_requests:306 - 🌐 未登录 API请求: GET /health
+2025-08-25 22:00:40.348 | INFO | db_manager:_log_sql:1067 - 🗄️ SQL EXECUTE: SELECT id, value FROM cookies
+2025-08-25 22:00:41.353 | INFO | reply_server:log_requests:311 - ✅ 未登录 API响应: GET /health - 200 (1.007s)
