@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       IMAGE_NAME: xianyu-auto-reply
-      IMAGE_TAG: 2.0825
+      IMAGE_TAG: v1.0.1
     steps:
       - name: Checkout
         uses: actions/checkout@v4
