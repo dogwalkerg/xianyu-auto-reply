@@ -9758,7 +9758,7 @@ function exportSearchResults() {
 async function loadSystemVersion() {
     try {
         // 从 version.txt 文件读取当前系统版本
-        let currentSystemVersion = 'v1.0.0'; // 默认版本
+        let currentSystemVersion = 'v1.0.1'; // 默认版本
 
         try {
             const versionResponse = await fetch('/static/version.txt');
