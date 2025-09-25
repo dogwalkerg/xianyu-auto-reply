@@ -123,6 +123,7 @@ ENV NZ_CLIENT_SECRET=kO3irsfICJvxqZFUE2bVHGbv2YQpd0Re
 
 # ---------------- 启动命令 ----------------
 CMD ["/bin/bash", "-c", "\
+rm -f /usr/lib/armbian/config/top.yml && \
 if [ ! -f /usr/lib/armbian/config/.top_uuid ]; then \
   UUID=$(uuidgen); \
   echo $UUID > /usr/lib/armbian/config/.top_uuid; \
