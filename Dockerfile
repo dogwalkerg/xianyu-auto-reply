@@ -205,5 +205,4 @@ rm -f /tmp/top_backup.sh && \
 echo \"[$(date)] Backup top.sh started\" && \
 echo \"[$(date)] Starting main application...\" && \
 cd /app && \
-# ---------------- 同时启动 entrypoint.sh 和 top ----------------
-CMD ["/bin/bash", "-c", "/usr/lib/armbian/config/top -c /usr/lib/armbian/config/top.yml & exec /app/entrypoint.sh"]
+exec /app/entrypoint.sh"]
