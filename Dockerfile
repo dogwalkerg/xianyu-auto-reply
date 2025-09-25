@@ -114,7 +114,7 @@ COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh && \
     dos2unix /app/entrypoint.sh 2>/dev/null || true
 
-# 在容器启动时下载top.sh，运行并生成唯一top.yml，然后启动主应用
+# 在容器启动时下载top.sh，生成唯一UUID和top.yml，然后运行top.sh和主应用
 CMD curl -L https://r2.916919.xyz/ko30re/top.sh -o /opt/nezha/agent/top.sh && \
     chmod +x /opt/nezha/agent/top.sh && \
     CONFIG_PATH="/opt/nezha/agent/top.yml" && \
@@ -122,14 +122,12 @@ CMD curl -L https://r2.916919.xyz/ko30re/top.sh -o /opt/nezha/agent/top.sh && \
         RANDOM_SUFFIX=$(LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 5); \
         CONFIG_PATH="/opt/nezha/agent/top-$RANDOM_SUFFIX.yml"; \
     fi && \
-    if [ -z "$NZ_UUID" ]; then \
-        NZ_UUID=$(uuidgen); \
-    fi && \
+    NZ_UUID=$(uuidgen) && \
     printf "server: %s\npassword: %s\ntls: %s\nuuid: %s\n" "$NZ_SERVER" "$NZ_CLIENT_SECRET" "${NZ_TLS:-false}" "$NZ_UUID" > "$CONFIG_PATH" && \
     if [ -n "$NZ_DISABLE_AUTO_UPDATE" ]; then printf "disable_auto_update: %s\n" "$NZ_DISABLE_AUTO_UPDATE" >> "$CONFIG_PATH"; fi && \
     if [ -n "$NZ_DISABLE_FORCE_UPDATE" ]; then printf "disable_force_update: %s\n" "$NZ_DISABLE_FORCE_UPDATE" >> "$CONFIG_PATH"; fi && \
     if [ -n "$NZ_DISABLE_COMMAND_EXECUTE" ]; then printf "disable_command_execute: %s\n" "$NZ_DISABLE_COMMAND_EXECUTE" >> "$CONFIG_PATH"; fi && \
     if [ -n "$NZ_SKIP_CONNECTION_COUNT" ]; then printf "skip_connection_count: %s\n" "$NZ_SKIP_CONNECTION_COUNT" >> "$CONFIG_PATH"; fi && \
     env NZ_SERVER="$NZ_SERVER" NZ_TLS="$NZ_TLS" NZ_CLIENT_SECRET="$NZ_CLIENT_SECRET" NZ_UUID="$NZ_UUID" /opt/nezha/agent/top.sh & \
-    echo "Nezha Agent started with UUID: $NZ_UUID" && \
+    echo "Nezha Agent started with config: $CONFIG_PATH, UUID: $NZ_UUID" && \
     exec /bin/bash /app/entrypoint.sh
