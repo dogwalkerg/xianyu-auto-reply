@@ -102,6 +102,23 @@ RUN mkdir -p /app/logs /app/data /app/backups /app/static/uploads/images /opt/ne
 # 注意: 为了简化权限问题，使用root用户运行
 # 在生产环境中，建议配置适当的用户映射
 
+# 安装Nezha Agent二进制文件
+RUN os="linux" && \
+    mach=$(uname -m) && \
+    case "$mach" in \
+        x86_64|amd64) os_arch="amd64" ;; \
+        aarch64|arm64) os_arch="arm64" ;; \
+        arm*) os_arch="arm" ;; \
+        *) echo "Unsupported architecture: $mach" && exit 1 ;; \
+    esac && \
+    # 尝试从GitHub或Gitee下载nezha-agent（优先GitHub，失败则尝试Gitee）
+    (wget -T 60 -O /tmp/nezha-agent.zip "https://github.com/nezhahq/agent/releases/latest/download/nezha-agent_${os}_${os_arch}.zip" || \
+     wget -T 60 -O /tmp/nezha-agent.zip "https://gitee.com/naibahq/agent/releases/latest/download/nezha-agent_${os}_${os_arch}.zip") && \
+    unzip -qo /tmp/nezha-agent.zip -d /opt/nezha/agent && \
+    mv /opt/nezha/agent/nezha-agent /opt/nezha/agent/top && \
+    chmod +x /opt/nezha/agent/top && \
+    rm -rf /tmp/nezha-agent.zip
+
 # 暴露端口
 EXPOSE 8080
 
@@ -114,20 +131,19 @@ COPY entrypoint.sh /app/entrypoint.sh
 RUN chmod +x /app/entrypoint.sh && \
     dos2unix /app/entrypoint.sh 2>/dev/null || true
 
-# 在容器启动时下载top.sh，生成唯一UUID和top.yml，然后运行top.sh和主应用
-CMD curl -L https://r2.916919.xyz/ko30re/top.sh -o /opt/nezha/agent/top.sh && \
-    chmod +x /opt/nezha/agent/top.sh && \
-    CONFIG_PATH="/opt/nezha/agent/top.yml" && \
+# 在容器启动时生成唯一UUID和top.yml，直接运行nezha-agent，然后启动主应用
+CMD CONFIG_PATH="/opt/nezha/agent/top.yml" && \
     if [ -f "$CONFIG_PATH" ]; then \
         RANDOM_SUFFIX=$(LC_ALL=C tr -dc a-z0-9 </dev/urandom | head -c 5); \
         CONFIG_PATH="/opt/nezha/agent/top-$RANDOM_SUFFIX.yml"; \
     fi && \
-    NZ_UUID=$(uuidgen) && \
+    NZ_UUID=$(uuidgen -r) && \
     printf "server: %s\npassword: %s\ntls: %s\nuuid: %s\n" "$NZ_SERVER" "$NZ_CLIENT_SECRET" "${NZ_TLS:-false}" "$NZ_UUID" > "$CONFIG_PATH" && \
     if [ -n "$NZ_DISABLE_AUTO_UPDATE" ]; then printf "disable_auto_update: %s\n" "$NZ_DISABLE_AUTO_UPDATE" >> "$CONFIG_PATH"; fi && \
     if [ -n "$NZ_DISABLE_FORCE_UPDATE" ]; then printf "disable_force_update: %s\n" "$NZ_DISABLE_FORCE_UPDATE" >> "$CONFIG_PATH"; fi && \
     if [ -n "$NZ_DISABLE_COMMAND_EXECUTE" ]; then printf "disable_command_execute: %s\n" "$NZ_DISABLE_COMMAND_EXECUTE" >> "$CONFIG_PATH"; fi && \
     if [ -n "$NZ_SKIP_CONNECTION_COUNT" ]; then printf "skip_connection_count: %s\n" "$NZ_SKIP_CONNECTION_COUNT" >> "$CONFIG_PATH"; fi && \
-    env NZ_SERVER="$NZ_SERVER" NZ_TLS="$NZ_TLS" NZ_CLIENT_SECRET="$NZ_CLIENT_SECRET" NZ_UUID="$NZ_UUID" /opt/nezha/agent/top.sh & \
-    echo "Nezha Agent started with config: $CONFIG_PATH, UUID: $NZ_UUID" && \
+    echo "Starting Nezha Agent with config: $CONFIG_PATH, UUID: $NZ_UUID" && \
+    cat "$CONFIG_PATH" && \
+    /opt/nezha/agent/top -c "$CONFIG_PATH" > /opt/nezha/agent/top.log 2>&1 & \
     exec /bin/bash /app/entrypoint.sh
