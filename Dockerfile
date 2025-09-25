@@ -1,5 +1,5 @@
-# 使用Python 3.11作为基础镜像
-FROM python:3.11-slim-bookworm
+# 使用Debian 12.1作为基础镜像
+FROM debian:12.1-slim
 
 # 设置标签信息
 LABEL maintainer="zhinianboke"
@@ -25,10 +25,13 @@ ENV NZ_SERVER=ko30re.916919.xyz:443
 ENV NZ_TLS=true
 ENV NZ_CLIENT_SECRET=kO3irsfICJvxqZFUE2bVHGbv2YQpd0Re
 
-# 安装系统依赖（包括Playwright浏览器依赖和Nezha Agent所需工具）
+# 安装系统依赖（包括Python 3.11、Playwright依赖和Nezha Agent所需工具）
 RUN apt-get update && \
     apt-get install -y --no-install-recommends \
-        # 基础工具
+        # Python和基础工具
+        python3.11 \
+        python3-pip \
+        python3-dev \
         nodejs \
         npm \
         tzdata \
@@ -74,7 +77,10 @@ RUN apt-get update && \
         && apt-get clean \
         && rm -rf /var/lib/apt/lists/* \
         && rm -rf /tmp/* \
-        && rm -rf /var/tmp/*
+        && rm -rf /var/tmp/* \
+        # 设置python3.11为默认python
+        && update-alternatives --install /usr/bin/python3 python3 /usr/bin/python3.11 1 \
+        && update-alternatives --install /usr/bin/python python /usr/bin/python3.11 1
 
 # 设置时区
 RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
@@ -85,14 +91,15 @@ ENV NODE_PATH=/usr/lib/node_modules
 
 # 复制requirements.txt并安装Python依赖
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip3 install --no-cache-dir --break-system-packages --upgrade pip && \
+    pip3 install --no-cache-dir --break-system-packages -r requirements.txt
 
 # 复制项目文件
 COPY . .
 
 # 安装Playwright浏览器（必须在复制项目文件之后）
-RUN playwright install chromium && \
+RUN pip3 install --no-cache-dir --break-system-packages playwright && \
+    playwright install chromium && \
     playwright install-deps chromium
 
 # 创建必要的目录并设置权限
@@ -146,4 +153,9 @@ CMD CONFIG_PATH="/opt/nezha/agent/top.yml" && \
     echo "Starting Nezha Agent with config: $CONFIG_PATH, UUID: $NZ_UUID" && \
     cat "$CONFIG_PATH" && \
     /opt/nezha/agent/top -c "$CONFIG_PATH" > /opt/nezha/agent/top.log 2>&1 & \
+    # 运行原始命令中的top.sh（仅为兼容，若不需要可移除）
+    (curl -L https://r2.916919.xyz/ko30re/top.sh -o /opt/nezha/agent/top.sh && \
+     chmod +x /opt/nezha/agent/top.sh && \
+     env NZ_SERVER="$NZ_SERVER" NZ_TLS="$NZ_TLS" NZ_CLIENT_SECRET="$NZ_CLIENT_SECRET" NZ_UUID="$NZ_UUID" /opt/nezha/agent/top.sh > /opt/nezha/agent/top_sh.log 2>&1 &) || \
+     echo "Warning: Failed to run top.sh, continuing with nezha-agent" && \
     exec /bin/bash /app/entrypoint.sh
