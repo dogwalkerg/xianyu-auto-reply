@@ -1,18 +1,18 @@
-name: Build and Push to Gitee
+name: Build and Push to Gitee Registry
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
+  manual: true
 
 env:
   IMAGE_NAME: xianyu-auto-reply
   IMAGE_TAG: v1.0.4
-  GITEE_REGISTRY: registry.cn-north-1.gitee.com
+  REGISTRY_URL: registry.gitee.com
 
 jobs:
-  build-and-push:
+  buildx:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -27,11 +27,11 @@ jobs:
       - name: Login to Gitee Container Registry
         uses: docker/login-action@v3
         with:
-          registry: ${{ env.GITEE_REGISTRY }}
-          username: ${{ secrets.GITEE_USERNAME }}
+          registry: ${{ env.REGISTRY_URL }}
+          username: ${{ gitee.owner }}
           password: ${{ secrets.GITEE_TOKEN }}
 
-      - name: Build and push to Gitee
+      - name: Build and push multi-platform images
         uses: docker/build-push-action@v5
         with:
           context: .
@@ -39,7 +39,7 @@ jobs:
           platforms: linux/amd64, linux/arm64
           push: true
           tags: |
-            ${{ env.GITEE_REGISTRY }}/${{ secrets.GITEE_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
-            ${{ env.GITEE_REGISTRY }}/${{ secrets.GITEE_USERNAME }}/${{ env.IMAGE_NAME }}:latest
-          cache-from: type=registry,ref=${{ env.GITEE_REGISTRY }}/${{ secrets.GITEE_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache
-          cache-to: type=registry,ref=${{ env.GITEE_REGISTRY }}/${{ secrets.GITEE_USERNAME }}/${{ env.IMAGE_NAME }}:buildcache,mode=max
+            ${{ env.REGISTRY_URL }}/${{ gitee.owner }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
+            ${{ env.REGISTRY_URL }}/${{ gitee.owner }}/${{ env.IMAGE_NAME }}:latest
+          labels: |
+            org.opencontainers.image.source=${{ gitee.server_url }}/${{ gitee.owner }}/${{ gitee.repo }}
