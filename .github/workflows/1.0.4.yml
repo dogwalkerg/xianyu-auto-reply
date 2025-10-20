@@ -1,4 +1,4 @@
-name: 1.0.2
+name: 1.0.4
 
 on:
   push:
@@ -10,7 +10,7 @@ jobs:
   buildx:
     runs-on: ubuntu-latest
     env:
-      VERSION: v1.0.2
+      VERSION: v1.0.4
       # 使用你提供的公网地址
       ALIYUN_REGISTRY: crpi-x68pqc6t5zexwzms.cn-guangzhou.personal.cr.aliyuncs.com
       # 完整的镜像名称（包含命名空间和仓库名）
