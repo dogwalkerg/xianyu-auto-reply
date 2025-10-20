@@ -1,10 +1,9 @@
-name: Build and Push to Gitee Registry
-
+name: Buildto Gitee
 on:
   push:
     branches:
       - main
-  manual: true
+  trigger: manual  # Gitee Go 使用 trigger: manual 而不是 manual: true
 
 env:
   IMAGE_NAME: xianyu-auto-reply
@@ -13,6 +12,7 @@ env:
 
 jobs:
   buildx:
+    name: Build Multi-Platform Docker Image
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -41,5 +41,3 @@ jobs:
           tags: |
             ${{ env.REGISTRY_URL }}/${{ gitee.owner }}/${{ env.IMAGE_NAME }}:${{ env.IMAGE_TAG }}
             ${{ env.REGISTRY_URL }}/${{ gitee.owner }}/${{ env.IMAGE_NAME }}:latest
-          labels: |
-            org.opencontainers.image.source=${{ gitee.server_url }}/${{ gitee.owner }}/${{ gitee.repo }}
