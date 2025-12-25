@@ -1,0 +1,76 @@
+name: Sync & Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: '强制构建镜像'
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 3 * * *'  # UTC时间3点（北京时间11点）
+    - cron: '0 10 * * *' # UTC时间10点（北京时间18点）
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.changes_detected || inputs.force_build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@users.noreply.github.com"
+
+      - name: Sync Upstream
+        id: check
+        run: |
+          git remote add upstream https://github.com/zhinianboke/xianyu-auto-reply.git || true
+          git fetch upstream
+          
+          if [ "${{ inputs.force_build }}" = "true" ]; then
+            echo "🟡 手动触发构建模式"
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+          elif ! git diff --quiet HEAD upstream/main; then
+            echo "🔵 检测到上游变更"
+            git merge -X theirs upstream/main
+            git push origin main
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+          else
+            echo "🟢 无新变更"
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: sync
+    if: needs.sync.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and Push
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.DOCKER_HUB_USERNAME }}/xianyu-auto-reply:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Completion Notice
+        run: |
+          echo "✅ 镜像已构建并推送为: ${{ secrets.DOCKER_HUB_USERNAME }}/xianyu-auto-reply:latest"
