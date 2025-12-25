@@ -1,0 +1,156 @@
+name: DHBSync & Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: '强制构建镜像'
+        required: false
+        type: boolean
+        default: false
+  schedule:
+    - cron: '0 3 * * *'
+    - cron: '0 10 * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.changes_detected || inputs.force_build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@users.noreply.github.com"
+
+      - name: Sync Upstream
+        id: check
+        run: |
+          git remote add upstream https://github.com/zhinianboke/xianyu-auto-reply.git || true
+          git fetch upstream
+          
+          if [ "${{ github.event.inputs.force_build }}" = "true" ]; then
+            echo "🟡 手动触发构建模式"
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+          elif ! git diff --quiet HEAD upstream/main; then
+            echo "🔵 检测到上游变更"
+            git merge -X theirs upstream/main
+            git push origin main
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+          else
+            echo "🟢 无新变更"
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: sync
+    if: needs.sync.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    env:
+      DOCKER_USERNAME: "bbrplus"  # 你的 Docker Hub 用户名
+      IMAGE_NAME: "xianyu-auto-reply"
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show build info
+        run: |
+          echo "🎯 构建配置信息："
+          echo "Docker Hub 用户名: ${{ env.DOCKER_USERNAME }}"
+          echo "镜像名称: ${{ env.IMAGE_NAME }}"
+          echo "完整镜像地址: ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}"
+          echo ""
+          echo "📊 验证 Docker Hub 仓库是否存在:"
+          echo "https://hub.docker.com/r/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}"
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}  # GitHub Secrets 中的用户名
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}     # GitHub Secrets 中的令牌
+
+      - name: Verify login and permissions
+        run: |
+          echo "验证 Docker Hub 登录状态..."
+          # 测试推送权限
+          docker pull alpine:latest
+          docker tag alpine:latest ${{ env.DOCKER_USERNAME }}/test-verify:latest
+          
+          echo "尝试推送测试镜像..."
+          if docker push ${{ env.DOCKER_USERNAME }}/test-verify:latest 2>&1 | grep -q "denied"; then
+            echo "❌ 推送权限不足，请检查："
+            echo "1. Docker Hub Token 是否有 write 权限"
+            echo "2. 仓库 ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }} 是否存在"
+            exit 1
+          else
+            echo "✅ 推送权限验证通过"
+            # 清理测试镜像
+            docker rmi ${{ env.DOCKER_USERNAME }}/test-verify:latest || true
+          fi
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        id: build-push
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.run_number }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.created=${{ github.event.head_commit.timestamp }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NPM_REGISTRY=https://registry.npmmirror.com
+            PNPM_FLAGS=--store-dir=/tmp/pnpm-store
+          provenance: false
+          sbom: false
+
+      - name: Verify image on Docker Hub
+        run: |
+          echo "验证镜像是否已推送到 Docker Hub..."
+          echo "等待 5 秒让 Docker Hub 处理..."
+          sleep 5
+          
+          echo "📦 镜像推送完成！"
+          echo ""
+          echo "✅ 镜像地址："
+          echo "   docker pull ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+          echo "   docker pull ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          echo ""
+          echo "🌐 在 Docker Hub 查看："
+          echo "   https://hub.docker.com/r/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}"
+          echo "   https://hub.docker.com/r/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}/tags"
+          echo ""
+          echo "💡 提示：Docker Hub 界面可能需要 1-2 分钟刷新显示"
+
+      - name: Manual verification instructions
+        if: always()
+        run: |
+          echo "🔍 如果 Docker Hub 界面看不到镜像，请尝试："
+          echo ""
+          echo "1. 命令行验证："
+          echo "   docker pull ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+          echo ""
+          echo "2. 直接访问 API："
+          echo "   curl -s 'https://hub.docker.com/v2/repositories/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}/tags/' | jq ."
+          echo ""
+          echo "3. 检查是否创建了仓库："
+          echo "   访问：https://hub.docker.com/repository/create"
+          echo "   仓库名填写：xianyu-auto-reply"
+          echo "   可见性选择：Public"
