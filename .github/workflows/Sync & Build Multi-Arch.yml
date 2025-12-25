@@ -1,0 +1,255 @@
+name: Sync & Build Multi-Arch
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: '强制构建镜像'
+        required: false
+        type: boolean
+        default: false
+      version_tag:
+        description: '自定义版本标签（如：v1.0.0）'
+        required: false
+        default: ''
+  schedule:
+    - cron: '0 3 * * *'
+    - cron: '0 10 * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.changes_detected || inputs.force_build }}
+      build_date: ${{ steps.date.outputs.date }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@users.noreply.github.com"
+
+      - name: Get current date
+        id: date
+        run: |
+          echo "date=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+          echo "datetime=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+
+      - name: Sync Upstream
+        id: check
+        run: |
+          git remote add upstream https://github.com/zhinianboke/xianyu-auto-reply.git || true
+          git fetch upstream
+          
+          if [ "${{ github.event.inputs.force_build }}" = "true" ] || [ -n "${{ github.event.inputs.version_tag }}" ]; then
+            echo "🟡 手动触发构建模式"
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+          elif ! git diff --quiet HEAD upstream/main; then
+            echo "🔵 检测到上游变更"
+            git merge -X theirs upstream/main
+            git push origin main
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+          else
+            echo "🟢 无新变更"
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+          fi
+
+  build-multi-arch:
+    needs: sync
+    if: needs.sync.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45  # 多架构构建需要更长时间
+    
+    env:
+      DOCKER_USERNAME: "bbrplus"
+      IMAGE_NAME: "xianyu-auto-reply"
+      VERSION_TAG: ${{ github.event.inputs.version_tag || 'latest' }}
+      DATE_TAG: ${{ needs.sync.outputs.date || 'nodate' }}
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show build info
+        run: |
+          echo "🎯 多架构构建配置："
+          echo "Docker Hub 用户名: ${{ env.DOCKER_USERNAME }}"
+          echo "镜像名称: ${{ env.IMAGE_NAME }}"
+          echo "版本标签: ${{ env.VERSION_TAG }}"
+          echo "构建日期: ${{ env.DATE_TAG }}"
+          echo "支持架构: linux/amd64, linux/arm64"
+          echo "Git SHA: ${{ github.sha }}"
+          echo ""
+          echo "📊 Docker Hub 仓库:"
+          echo "https://hub.docker.com/r/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}"
+
+      - name: Set up QEMU for ARM64 emulation
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64  # 启用 ARM64 模拟
+
+      - name: Create and use Buildx builder
+        run: |
+          # 创建支持多架构的 builder
+          docker buildx create \
+            --name multi-arch-builder \
+            --driver docker-container \
+            --driver-opt network=host \
+            --platform linux/amd64,linux/arm64 \
+            --use
+          
+          # 启动并检查 builder
+          docker buildx inspect --bootstrap
+          
+          # 显示支持的平台
+          echo "✅ Builder 支持的平台:"
+          docker buildx ls
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and push multi-arch image
+        uses: docker/build-push-action@v5
+        id: build-push
+        with:
+          context: .
+          platforms: linux/amd64,linux/arm64  # 同时构建两个架构
+          push: true
+          tags: |
+            # 主要标签（多架构）
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:v1.0.4
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.DATE_TAG }}
+            
+            # 提交版本标签
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            
+            # 架构特定标签（可选，用于调试）
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.DATE_TAG }}-amd64
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.DATE_TAG }}-arm64
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            org.opencontainers.image.version=v1.0.4
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NPM_REGISTRY=https://registry.npmmirror.com
+            PNPM_FLAGS=--store-dir=/tmp/pnpm-store
+            VERSION=v1.0.4
+          provenance: false
+          sbom: false
+
+      - name: Verify multi-arch manifest
+        run: |
+          echo "🔍 验证多架构镜像清单..."
+          sleep 5  # 等待 Docker Hub 处理
+          
+          echo ""
+          echo "检查 latest 标签的架构支持:"
+          docker buildx imagetools inspect ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest || \
+          echo "注意: 可能需要先登录才能查看"
+          
+          echo ""
+          echo "📊 镜像架构信息:"
+          echo "镜像已支持以下架构:"
+          echo "  - linux/amd64 (x86_64, Intel/AMD 服务器和PC)"
+          echo "  - linux/arm64 (ARM64, Apple Silicon, Raspberry Pi 4, ARM服务器)"
+          echo ""
+          echo "✅ Docker 会自动根据运行平台拉取正确的架构"
+
+      - name: Test pulling different architectures
+        run: |
+          echo "🧪 测试不同架构的拉取:"
+          echo ""
+          echo "对于 AMD64/x86_64 系统:"
+          echo "  docker pull --platform linux/amd64 ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+          echo ""
+          echo "对于 ARM64 系统 (Apple Silicon Mac, Raspberry Pi):"
+          echo "  docker pull --platform linux/arm64 ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+          echo ""
+          echo "自动选择 (Docker 会根据当前系统选择):"
+          echo "  docker pull ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+
+      - name: Clean up builder
+        if: always()
+        run: |
+          echo "清理 Buildx builder..."
+          docker buildx rm multi-arch-builder || true
+
+      - name: Display completion info
+        run: |
+          echo "=========================================="
+          echo "✅ 多架构 Docker 镜像构建完成！"
+          echo ""
+          echo "📦 镜像信息:"
+          echo "   名称: ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}"
+          echo "   版本: v1.0.4"
+          echo "   架构: linux/amd64 + linux/arm64"
+          echo ""
+          echo "🏷️  可用标签:"
+          echo "   • latest (多架构)"
+          echo "   • v1.0.4 (多架构)"
+          echo "   • ${{ env.DATE_TAG }} (多架构)"
+          echo "   • ${{ github.sha }} (多架构)"
+          echo "   • ${{ env.DATE_TAG }}-amd64 (仅 AMD64)"
+          echo "   • ${{ env.DATE_TAG }}-arm64 (仅 ARM64)"
+          echo ""
+          echo "🏗️  支持的平台:"
+          echo "   • Intel/AMD 服务器 (x86_64)"
+          echo "   • Apple Silicon Mac (M1/M2/M3)"
+          echo "   • Raspberry Pi 4/5 (ARM64)"
+          echo "   • AWS Graviton/ARM 服务器"
+          echo ""
+          echo "🌐 查看 Docker Hub:"
+          echo "   https://hub.docker.com/r/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}/tags"
+          echo ""
+          echo "🔍 验证命令:"
+          echo "   # 查看镜像支持的架构"
+          echo "   docker manifest inspect ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+          echo ""
+          echo "   # 拉取特定架构"
+          echo "   docker pull --platform linux/arm64 ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+          echo "=========================================="
+
+  # 可选：添加单架构构建作为回退方案
+  build-fallback:
+    needs: [sync, build-multi-arch]
+    if: needs.build-multi-arch.result == 'failure'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    env:
+      DOCKER_USERNAME: "bbrplus"
+      IMAGE_NAME: "xianyu-auto-reply"
+    
+    steps:
+      - uses: actions/checkout@v4
+        
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+          
+      - name: Build and push amd64 only
+        run: |
+          echo "⚠️ 多架构构建失败，回退到单架构 (amd64)"
+          
+          docker build \
+            -t ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest \
+            -t ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:v1.0.4-amd64 \
+            -f Dockerfile .
+            
+          docker push ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+          docker push ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:v1.0.4-amd64
+          
+          echo "✅ 单架构镜像已推送"
