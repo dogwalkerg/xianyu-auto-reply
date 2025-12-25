@@ -1,0 +1,173 @@
+name: V1DHBSync & Build
+
+on:
+  workflow_dispatch:
+    inputs:
+      force_build:
+        description: '强制构建镜像'
+        required: false
+        type: boolean
+        default: false
+      version_tag:
+        description: 'v1.0.5）'
+        required: false
+        default: ''
+  schedule:
+    - cron: '0 3 * * *'
+    - cron: '0 10 * * *'
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    outputs:
+      should_build: ${{ steps.check.outputs.changes_detected || inputs.force_build }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure Git
+        run: |
+          git config --global user.name "GitHub Actions"
+          git config --global user.email "actions@users.noreply.github.com"
+
+      - name: Get current date
+        id: date
+        run: |
+          echo "date=$(date +'%Y%m%d')" >> $GITHUB_OUTPUT
+          echo "datetime=$(date +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+
+      - name: Sync Upstream
+        id: check
+        run: |
+          git remote add upstream https://github.com/zhinianboke/xianyu-auto-reply.git || true
+          git fetch upstream
+          
+          if [ "${{ github.event.inputs.force_build }}" = "true" ] || [ -n "${{ github.event.inputs.version_tag }}" ]; then
+            echo "🟡 手动触发构建模式"
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+          elif ! git diff --quiet HEAD upstream/main; then
+            echo "🔵 检测到上游变更"
+            git merge -X theirs upstream/main
+            git push origin main
+            echo "changes_detected=true" >> $GITHUB_OUTPUT
+          else
+            echo "🟢 无新变更"
+            echo "changes_detected=false" >> $GITHUB_OUTPUT
+          fi
+
+  build:
+    needs: sync
+    if: needs.sync.outputs.should_build == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    env:
+      DOCKER_USERNAME: "bbrplus"
+      IMAGE_NAME: "xianyu-auto-reply"
+      # 版本策略
+      VERSION_TAG: ${{ github.event.inputs.version_tag || 'latest' }}
+      DATE_TAG: ${{ needs.sync.outputs.date || 'nodate' }}
+    
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Show build info
+        run: |
+          echo "🎯 构建配置信息："
+          echo "Docker Hub 用户名: ${{ env.DOCKER_USERNAME }}"
+          echo "镜像名称: ${{ env.IMAGE_NAME }}"
+          echo "版本标签: ${{ env.VERSION_TAG }}"
+          echo "日期标签: ${{ env.DATE_TAG }}"
+          echo "Git SHA: ${{ github.sha }}"
+          echo "运行编号: ${{ github.run_number }}"
+          echo ""
+          echo "📊 Docker Hub 仓库:"
+          echo "https://hub.docker.com/r/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}"
+
+      - name: Setup Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to Docker Hub
+        uses: docker/login-action@v3
+        with:
+          username: ${{ secrets.DOCKER_HUB_USERNAME }}
+          password: ${{ secrets.DOCKER_HUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v5
+        id: build-push
+        with:
+          context: .
+          platforms: linux/amd64
+          push: true
+          tags: |
+            # 主要标签
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.VERSION_TAG }}
+            
+            # 固定版本标签（推荐使用）
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:v1.0.4
+            
+            # 特定标识标签
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.DATE_TAG }}
+            
+            # 运行编号标签（可选）
+            ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:run-${{ github.run_number }}
+          labels: |
+            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
+            org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+            org.opencontainers.image.version=${{ env.VERSION_TAG }}
+            org.opencontainers.image.revision=${{ github.sha }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+          build-args: |
+            NPM_REGISTRY=https://registry.npmmirror.com
+            PNPM_FLAGS=--store-dir=/tmp/pnpm-store
+            VERSION=${{ env.VERSION_TAG }}
+          provenance: false
+          sbom: false
+
+      - name: Clean old tags (optional)
+        run: |
+          echo "如果需要清理旧标签，可以在这里添加清理逻辑"
+          echo "当前标签已推送："
+          echo "1. latest"
+          echo "2. ${{ env.VERSION_TAG }}"
+          echo "3. v1.0.4"
+          echo "4. ${{ github.sha }}"
+          echo "5. ${{ env.DATE_TAG }}"
+          echo "6. run-${{ github.run_number }}"
+
+      - name: Display verification info
+        run: |
+          echo "=========================================="
+          echo "✅ Docker 镜像构建和推送完成！"
+          echo ""
+          echo "📦 可用的镜像标签："
+          echo ""
+          echo "   最新版本:"
+          echo "   docker pull ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
+          echo ""
+          echo "   固定版本 (推荐生产使用):"
+          echo "   docker pull ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:v1.0.4"
+          echo ""
+          echo "   特定提交版本:"
+          echo "   docker pull ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}"
+          echo ""
+          echo "   今日构建版本:"
+          echo "   docker pull ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.DATE_TAG }}"
+          echo ""
+          echo "🌐 在 Docker Hub 查看所有标签："
+          echo "   https://hub.docker.com/r/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}/tags"
+          echo ""
+          echo "🔍 验证命令："
+          echo "   # 查看所有标签"
+          echo "   curl -s 'https://hub.docker.com/v2/repositories/${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}/tags/' | jq '.results[].name'"
+          echo ""
+          echo "   # 拉取测试"
+          echo "   docker pull ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:v1.0.5"
+          echo "=========================================="
