@@ -61,7 +61,7 @@ jobs:
     needs: sync
     if: needs.sync.outputs.should_build == 'true'
     runs-on: ubuntu-latest
-    timeout-minutes: 45  # 多架构构建需要更长时间
+    timeout-minutes: 45
     
     env:
       DOCKER_USERNAME: "bbrplus"
@@ -90,7 +90,7 @@ jobs:
       - name: Set up QEMU for ARM64 emulation
         uses: docker/setup-qemu-action@v3
         with:
-          platforms: arm64  # 启用 ARM64 模拟
+          platforms: arm64
 
       - name: Create and use Buildx builder
         run: |
@@ -120,18 +120,13 @@ jobs:
         id: build-push
         with:
           context: .
-          platforms: linux/amd64,linux/arm64  # 同时构建两个架构
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            # 主要标签（多架构）
             ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
             ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:v1.0.4
             ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.DATE_TAG }}
-            
-            # 提交版本标签
             ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ github.sha }}
-            
-            # 架构特定标签（可选，用于调试）
             ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.DATE_TAG }}-amd64
             ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:${{ env.DATE_TAG }}-arm64
           labels: |
@@ -151,12 +146,7 @@ jobs:
       - name: Verify multi-arch manifest
         run: |
           echo "🔍 验证多架构镜像清单..."
-          sleep 5  # 等待 Docker Hub 处理
-          
-          echo ""
-          echo "检查 latest 标签的架构支持:"
-          docker buildx imagetools inspect ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest || \
-          echo "注意: 可能需要先登录才能查看"
+          sleep 5
           
           echo ""
           echo "📊 镜像架构信息:"
@@ -165,19 +155,6 @@ jobs:
           echo "  - linux/arm64 (ARM64, Apple Silicon, Raspberry Pi 4, ARM服务器)"
           echo ""
           echo "✅ Docker 会自动根据运行平台拉取正确的架构"
-
-      - name: Test pulling different architectures
-        run: |
-          echo "🧪 测试不同架构的拉取:"
-          echo ""
-          echo "对于 AMD64/x86_64 系统:"
-          echo "  docker pull --platform linux/amd64 ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
-          echo ""
-          echo "对于 ARM64 系统 (Apple Silicon Mac, Raspberry Pi):"
-          echo "  docker pull --platform linux/arm64 ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
-          echo ""
-          echo "自动选择 (Docker 会根据当前系统选择):"
-          echo "  docker pull ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest"
 
       - name: Clean up builder
         if: always()
@@ -246,10 +223,10 @@ jobs:
           
           docker build \
             -t ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest \
-            -t ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:v1.0.4-amd64 \
+            -t ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:v1.0.5-amd64 \
             -f Dockerfile .
             
           docker push ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:latest
-          docker push ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:v1.0.4-amd64
+          docker push ${{ env.DOCKER_USERNAME }}/${{ env.IMAGE_NAME }}:v1.0.5-amd64
           
           echo "✅ 单架构镜像已推送"
