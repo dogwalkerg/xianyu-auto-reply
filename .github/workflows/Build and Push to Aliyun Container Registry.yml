@@ -1,69 +1,35 @@
-name: Build and Push to Aliyun Container Registry
+name: Build and Push to Aliyun
 
 on:
   workflow_dispatch:
     inputs:
       version_tag:
-        description: '镜像版本标签（如：v1.0.5）'
+        description: '镜像版本标签'
         required: true
         type: string
         default: 'v1.0.5'
-      skip_schedule:
-        description: '跳过定时构建（仅本次）'
-        required: false
-        type: boolean
-        default: false
   schedule:
-    - cron: '0 3 * * *'  # UTC时间3点（北京时间11点）
-    - cron: '0 10 * * *' # UTC时间10点（北京时间18点）
+    - cron: '0 3 * * *'
+    - cron: '0 10 * * *'
 
 jobs:
   build:
-    # 如果手动触发时选择了跳过定时构建，则不运行
-    if: |
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.skip_schedule == false) ||
-      github.event_name == 'schedule' ||
-      (github.event_name == 'workflow_dispatch' && github.event.inputs.skip_schedule == true && github.event.inputs.version_tag != '')
-    
     runs-on: ubuntu-latest
-    timeout-minutes: 35
+    timeout-minutes: 30
     
     env:
-      # 阿里云容器镜像服务配置
       ALIYUN_REGISTRY: crpi-x68pqc6t5zexwzms.cn-guangzhou.personal.cr.aliyuncs.com
-      ALIYUN_NAMESPACE: xianyuauto
-      ALIYUN_REPO: xianyu
-      # 完整的镜像名称
       ALIYUN_IMAGE: crpi-x68pqc6t5zexwzms.cn-guangzhou.personal.cr.aliyuncs.com/xianyuauto/xianyu
     
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
-      
-      - name: Show build configuration
-        run: |
-          echo "🚀 阿里云容器镜像构建配置"
-          echo "========================================"
-          echo "触发方式: ${{ github.event_name }}"
-          echo "版本标签: ${{ github.event.inputs.version_tag }}"
-          echo "阿里云 Registry: ${{ env.ALIYUN_REGISTRY }}"
-          echo "命名空间: ${{ env.ALIYUN_NAMESPACE }}"
-          echo "仓库名称: ${{ env.ALIYUN_REPO }}"
-          echo "完整镜像: ${{ env.ALIYUN_IMAGE }}"
-          echo "Git 提交: ${{ github.sha }}"
-          echo "支持架构: linux/amd64, linux/arm64"
-          echo "========================================"
       
       - name: Setup Docker Buildx
         uses: docker/setup-buildx-action@v3
-        id: buildx
       
-      - name: Setup QEMU for ARM64 emulation
+      - name: Setup QEMU for ARM64
         uses: docker/setup-qemu-action@v3
-        with:
-          platforms: arm64
       
       - name: Login to Aliyun Container Registry
         uses: docker/login-action@v3
@@ -72,100 +38,23 @@ jobs:
           username: ${{ secrets.ALIYUN_USERNAME }}
           password: ${{ secrets.ALIYUN_PASSWORD }}
       
-      - name: Test Aliyun connection
-        run: |
-          echo "测试阿里云容器服务连接..."
-          # 简单的连接测试
-          curl -I https://${{ env.ALIYUN_REGISTRY }}/v2/ || true
-          echo "✅ 阿里云登录成功"
-      
-      - name: Build and push multi-arch image
+      - name: Build and push
         uses: docker/build-push-action@v5
-        id: build-push
         with:
           context: .
           platforms: linux/amd64,linux/arm64
           push: true
           tags: |
-            # 主标签
             ${{ env.ALIYUN_IMAGE }}:latest
             ${{ env.ALIYUN_IMAGE }}:${{ github.event.inputs.version_tag }}
-            
-            # 附加标签（便于管理和回滚）
-            ${{ env.ALIYUN_IMAGE }}:${{ github.event.inputs.version_tag }}-$(date +%Y%m%d)
-            ${{ env.ALIYUN_IMAGE }}:${{ github.sha }}
-          labels: |
-            org.opencontainers.image.source=${{ github.server_url }}/${{ github.repository }}
-            org.opencontainers.image.created=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-            org.opencontainers.image.version=${{ github.event.inputs.version_tag }}
-            org.opencontainers.image.revision=${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
             NPM_REGISTRY=https://registry.npmmirror.com
             PNPM_FLAGS=--store-dir=/tmp/pnpm-store
-            BUILD_DATE=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
-            VERSION=${{ github.event.inputs.version_tag }}
           provenance: false
-          sbom: false
       
-      - name: Verify push success
+      - name: Show success message
         run: |
-          echo "🔍 验证镜像推送结果..."
-          echo "镜像摘要: ${{ steps.build-push.outputs.digest }}"
-          echo "镜像ID: ${{ steps.build-push.outputs.imageid }}"
-          
-          echo ""
-          echo "✅ 阿里云镜像推送完成！"
-          echo ""
-          echo "📦 已推送的镜像标签："
-          echo "   1. ${{ env.ALIYUN_IMAGE }}:latest"
-          echo "   2. ${{ env.ALIYUN_IMAGE }}:${{ github.event.inputs.version_tag }}"
-          echo "   3. ${{ env.ALIYUN_IMAGE }}:${{ github.event.inputs.version_tag }}-$(date +%Y%m%d)"
-          echo "   4. ${{ env.ALIYUN_IMAGE }}:${{ github.sha }}"
-      
-      - name: Generate usage instructions
-        run: |
-          echo "🚀 使用说明"
-          echo "========================================"
-          echo ""
-          echo "1. 登录阿里云容器镜像服务："
-          echo "   docker login ${{ env.ALIYUN_REGISTRY }}"
-          echo "   用户名: [你的阿里云用户名]"
-          echo "   密码: [你的阿里云容器镜像服务密码]"
-          echo ""
-          echo "2. 拉取镜像："
-          echo "   # 拉取最新版本"
-          echo "   docker pull ${{ env.ALIYUN_IMAGE }}:latest"
-          echo ""
-          echo "   # 拉取特定版本"
-          echo "   docker pull ${{ env.ALIYUN_IMAGE }}:${{ github.event.inputs.version_tag }}"
-          echo ""
-          echo "   # 拉取特定架构（如果需要）"
-          echo "   docker pull --platform linux/arm64 ${{ env.ALIYUN_IMAGE }}:${{ github.event.inputs.version_tag }}"
-          echo "   docker pull --platform linux/amd64 ${{ env.ALIYUN_IMAGE }}:${{ github.event.inputs.version_tag }}"
-          echo ""
-          echo "3. 运行容器："
-          echo "   docker run -d \\"
-          echo "     --name xianyu-auto-reply \\"
-          echo "     -p 8000:8000 \\"
-          echo "     -v ./data:/app/data \\"
-          echo "     -v ./logs:/app/logs \\"
-          echo "     ${{ env.ALIYUN_IMAGE }}:${{ github.event.inputs.version_tag }}"
-          echo ""
-          echo "4. 查看镜像信息："
-          echo "   docker inspect ${{ env.ALIYUN_IMAGE }}:${{ github.event.inputs.version_tag }}"
-          echo ""
-          echo "🔗 阿里云控制台："
-          echo "   https://cr.console.aliyun.com/cn-guangzhou/instances/repositories/${{ env.ALIYUN_NAMESPACE }}/${{ env.ALIYUN_REPO }}"
-          echo ""
-          echo "📊 查看所有标签："
-          echo "   https://cr.console.aliyun.com/cn-guangzhou/instances/repositories/${{ env.ALIYUN_NAMESPACE }}/${{ env.ALIYUN_REPO }}/tag"
-          echo "========================================"
-      
-      - name: Cleanup Docker resources
-        if: always()
-        run: |
-          echo "清理 Docker 资源..."
-          docker system prune -f || true
-          echo "✅ 清理完成"
+          echo "✅ 镜像已推送到阿里云！"
+          echo "镜像地址: ${{ env.ALIYUN_IMAGE }}:${{ github.event.inputs.version_tag }}"
