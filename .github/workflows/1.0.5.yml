@@ -1,0 +1,149 @@
+name: Aliyun1.0.5
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  buildx:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30  # 添加超时设置
+    
+    env:
+      VERSION: v1.0.5
+      ALIYUN_REGISTRY: crpi-x68pqc6t5zexwzms.cn-guangzhou.personal.cr.aliyuncs.com
+      FULL_IMAGE_NAME: crpi-x68pqc6t5zexwzms.cn-guangzhou.personal.cr.aliyuncs.com/xianyuauto/xianyu
+      
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        
+      - name: Debug - Show image info
+        run: |
+          echo "Registry: ${{ env.ALIYUN_REGISTRY }}"
+          echo "Full Image Name: ${{ env.FULL_IMAGE_NAME }}"
+          echo "Version: ${{ env.VERSION }}"
+          
+      - name: Setup QEMU (for multi-arch builds)
+        uses: docker/setup-qemu-action@v3
+        
+      - name: Login to Aliyun Personal Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.ALIYUN_REGISTRY }}
+          username: ${{ secrets.ALIYUN_USERNAME }}
+          password: ${{ secrets.ALIYUN_PASSWORD }}
+          
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+        id: buildx
+        with:
+          driver: docker-container
+          driver-opts: |
+            image=moby/buildkit:master
+          buildkitd-flags: --debug
+          
+      - name: Cache Docker layers
+        uses: actions/cache@v3
+        with:
+          path: /tmp/.buildx-cache
+          key: ${{ runner.os }}-buildx-${{ github.sha }}
+          restore-keys: |
+            ${{ runner.os }}-buildx-
+            
+      - name: Build and push with retry logic
+        run: |
+          set -e  # 出错时退出
+          
+          # 构建并推送多架构镜像，添加重试机制
+          max_retries=3
+          retry_count=0
+          
+          while [ $retry_count -lt $max_retries ]; do
+            echo "尝试第 $((retry_count + 1)) 次构建和推送..."
+            
+            # 使用构建缓存，禁用证明以加速
+            docker buildx build \
+              --platform linux/amd64,linux/arm64 \
+              -t ${{ env.FULL_IMAGE_NAME }}:${{ env.VERSION }} \
+              -t ${{ env.FULL_IMAGE_NAME }}:latest \
+              -f Dockerfile . \
+              --push \
+              --cache-from type=gha \
+              --cache-to type=gha,mode=max \
+              --provenance=false \
+              --no-cache-filter="provenance" \
+              --builder=default \
+              && {
+                echo "构建和推送成功！"
+                break
+              }
+              
+            retry_count=$((retry_count + 1))
+            if [ $retry_count -lt $max_retries ]; then
+              echo "推送失败，等待 30 秒后重试..."
+              sleep 30
+            else
+              echo "已达到最大重试次数 $max_retries，构建失败"
+              exit 1
+            fi
+          done
+          
+      - name: 单独推送每个标签（备用方案）
+        if: failure()  # 只在主步骤失败时执行
+        run: |
+          echo "使用备用方案：先构建后推送..."
+          
+          # 1. 先构建到本地
+          docker buildx build \
+            --platform linux/amd64,linux/arm64 \
+            -t ${{ env.FULL_IMAGE_NAME }}:${{ env.VERSION }} \
+            --output type=docker,dest=/tmp/image.tar \
+            --provenance=false \
+            .
+            
+          # 2. 加载镜像
+          docker load < /tmp/image.tar
+          
+          # 3. 分别推送每个架构（可选，如果多架构失败）
+          # 推送版本标签
+          for i in {1..3}; do
+            echo "第 $i 次尝试推送 ${{ env.VERSION }} 标签..."
+            docker push ${{ env.FULL_IMAGE_NAME }}:${{ env.VERSION }} && break || sleep 15
+          done
+          
+          # 4. 推送 latest 标签
+          docker tag ${{ env.FULL_IMAGE_NAME }}:${{ env.VERSION }} ${{ env.FULL_IMAGE_NAME }}:latest
+          for i in {1..3}; do
+            echo "第 $i 次尝试推送 latest 标签..."
+            docker push ${{ env.FULL_IMAGE_NAME }}:latest && break || sleep 15
+          done
+          
+      - name: 检查网络连接（调试用）
+        if: failure()
+        run: |
+          echo "=== 网络诊断 ==="
+          ping -c 3 8.134.224.193 || true
+          curl -I https://${{ env.ALIYUN_REGISTRY }}/v2/ || true
+          echo "=== Docker 信息 ==="
+          docker info | grep -A5 "Registry"
+          echo "=== 镜像列表 ==="
+          docker images | grep xianyu || true
+          
+      - name: Verify image pushed successfully
+        run: |
+          echo "✅ 构建完成！"
+          echo "📦 镜像地址: ${{ env.FULL_IMAGE_NAME }}:${{ env.VERSION }}"
+          echo "🏷️  最新标签: ${{ env.FULL_IMAGE_NAME }}:latest"
+          echo ""
+          echo "您可以在阿里云控制台查看："
+          echo "https://cr.console.aliyun.com/cn-guangzhou/instances"
+          
+      - name: 清理 Docker 资源（可选）
+        if: always()
+        run: |
+          echo "清理 Docker 资源..."
+          docker system prune -f || true
+          docker builder prune -f || true
